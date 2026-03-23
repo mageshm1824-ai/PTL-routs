@@ -4,7 +4,518 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PTL Round Trip Optimizer</title>
-  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* ── Reset & Variables ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-base:       #0d0f14;
+      --bg-card:       #13161e;
+      --bg-raised:     #1a1e2a;
+      --bg-input:      #1e2230;
+      --border:        #2a2f3d;
+      --border-light:  #323849;
+      --text-primary:  #e8eaf0;
+      --text-secondary:#8b90a0;
+      --text-muted:    #555c72;
+      --accent-cyan:   #00d4ff;
+      --accent-green:  #00e676;
+      --accent-amber:  #ffab40;
+      --accent-purple: #c77dff;
+      --accent-red:    #ff5252;
+      --accent-blue:   #448aff;
+      --shadow-lg:     0 8px 32px rgba(0,0,0,0.5);
+      --radius:        10px;
+      --radius-sm:     6px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-primary);
+      font-family: 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: rgba(19,22,30,0.95);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { font-size: 28px; }
+    .logo-text { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; color: var(--text-primary); }
+    .logo-sub  { font-size: 11px; color: var(--accent-cyan); letter-spacing: 1.5px; text-transform: uppercase; }
+    .header-badges { display: flex; align-items: center; gap: 8px; }
+
+    /* ── Page ── */
+    .page {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .badge-live    { background: rgba(0,230,118,0.15); color: var(--accent-green); border: 1px solid rgba(0,230,118,0.3); }
+    .badge-version { background: rgba(0,212,255,0.12); color: var(--accent-cyan);  border: 1px solid rgba(0,212,255,0.25); }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-body { padding: 20px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+    .btn-primary   { background: var(--accent-cyan);   color: #000; }
+    .btn-primary:hover { background: #33dcff; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,212,255,0.35); }
+    .btn-secondary { background: rgba(0,230,118,0.15); color: var(--accent-green); border: 1px solid rgba(0,230,118,0.3); }
+    .btn-secondary:hover { background: rgba(0,230,118,0.25); }
+    .btn-ghost     { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--bg-raised); color: var(--text-primary); border-color: var(--border-light); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+    /* ── Form ── */
+    .config-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.8px; text-transform: uppercase; }
+    .form-input {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      padding: 9px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus { border-color: var(--accent-cyan); }
+    .form-input[readonly] { cursor: default; }
+
+    .input-with-prefix { position: relative; }
+    .input-prefix {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .input-with-prefix .form-input { padding-left: 26px; }
+
+    /* ── Multiselect ── */
+    .multiselect-wrapper { position: relative; }
+    .multiselect-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      min-height: 42px;
+    }
+    .multiselect-trigger:hover,
+    .multiselect-trigger.open { border-color: var(--accent-cyan); }
+    .multiselect-trigger-text { color: var(--text-muted); font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .multiselect-trigger-text.has-selection { color: var(--text-primary); }
+    .multiselect-arrow { color: var(--text-muted); font-size: 10px; margin-left: 8px; transition: transform 0.2s; flex-shrink: 0; }
+    .multiselect-trigger.open .multiselect-arrow { transform: rotate(180deg); }
+
+    .multiselect-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      z-index: 200;
+      flex-direction: column;
+      max-height: 380px;
+    }
+    .multiselect-dropdown.open { display: flex; }
+
+    .dropdown-search-wrap { padding: 10px 10px 6px; }
+    .dropdown-search {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      font-size: 13px;
+      outline: none;
+    }
+    .dropdown-search:focus { border-color: var(--accent-cyan); }
+
+    .dropdown-actions {
+      display: flex;
+      gap: 6px;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .dropdown-action-btn {
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .dropdown-action-btn:hover { background: var(--bg-input); color: var(--accent-cyan); border-color: var(--accent-cyan); }
+
+    .dropdown-list { overflow-y: auto; flex: 1; padding: 4px; }
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .dropdown-item:hover { background: var(--bg-raised); }
+    .dropdown-item.selected { background: rgba(0,212,255,0.08); }
+
+    .dropdown-checkbox {
+      width: 16px; height: 16px;
+      border: 1.5px solid var(--border-light);
+      border-radius: 3px;
+      flex-shrink: 0;
+      transition: all 0.12s;
+    }
+    .dropdown-item.selected .dropdown-checkbox {
+      background: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+    }
+    .dropdown-item.selected .dropdown-checkbox::after {
+      content: '✓';
+      display: block;
+      color: #000;
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 16px;
+    }
+
+    .dropdown-item-info { flex: 1; min-width: 0; }
+    .dropdown-item-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dropdown-item.selected .dropdown-item-name { color: var(--accent-cyan); }
+    .dropdown-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .dropdown-item-kms { font-size: 12px; color: var(--text-muted); font-family: monospace; flex-shrink: 0; }
+
+    .selected-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .selected-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(0,212,255,0.1);
+      border: 1px solid rgba(0,212,255,0.25);
+      border-radius: 20px;
+      padding: 3px 10px 3px 10px;
+      font-size: 12px;
+      color: var(--accent-cyan);
+    }
+    .tag-remove { cursor: pointer; opacity: 0.6; font-size: 14px; line-height: 1; }
+    .tag-remove:hover { opacity: 1; }
+
+    /* ── Actions row ── */
+    .actions-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .mt-8 { margin-top: 8px; }
+    .mt-16 { margin-top: 16px; }
+    .divider { border: none; border-top: 1px solid var(--border); }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── Stats grid ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: var(--border-light); }
+    .highlight-cyan   { border-left: 3px solid var(--accent-cyan); }
+    .highlight-amber  { border-left: 3px solid var(--accent-amber); }
+    .highlight-green  { border-left: 3px solid var(--accent-green); }
+    .highlight-purple { border-left: 3px solid var(--accent-purple); }
+
+    .stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
+    .stat-value { font-size: 22px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; line-height: 1; margin-bottom: 6px; }
+    .stat-sub   { font-size: 11px; color: var(--text-muted); }
+    .cyan   { color: var(--accent-cyan); }
+    .amber  { color: var(--accent-amber); }
+    .green  { color: var(--accent-green); }
+    .purple { color: var(--accent-purple); }
+    .red    { color: var(--accent-red); }
+
+    /* ── Eligibility banner ── */
+    .eligibility-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 16px 20px;
+      border-radius: var(--radius);
+      border: 1px solid;
+      margin-bottom: 20px;
+    }
+    .eligible     { background: rgba(0,230,118,0.07); border-color: rgba(0,230,118,0.3); }
+    .not-eligible { background: rgba(255,82,82,0.07);  border-color: rgba(255,82,82,0.3); }
+    .pending      { background: rgba(255,171,64,0.07); border-color: rgba(255,171,64,0.3); }
+
+    .eligibility-icon { font-size: 28px; flex-shrink: 0; }
+    .eligibility-text { flex: 1; }
+    .eligibility-text h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .eligibility-text p  { font-size: 13px; color: var(--text-secondary); }
+    .eligibility-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      align-self: flex-start;
+      flex-shrink: 0;
+    }
+    .badge-eligible     { background: rgba(0,230,118,0.15); color: var(--accent-green);  border: 1px solid rgba(0,230,118,0.3); }
+    .badge-not-eligible { background: rgba(255,82,82,0.15);  color: var(--accent-red);   border: 1px solid rgba(255,82,82,0.3); }
+    .badge-pending      { background: rgba(255,171,64,0.15); color: var(--accent-amber); border: 1px solid rgba(255,171,64,0.3); }
+
+    /* ── Two-col layout ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── Route steps ── */
+    .route-steps { display: flex; flex-direction: column; gap: 0; }
+    .route-step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+    .route-step:last-child { border-bottom: none; }
+    .step-dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .step-dot.origin      { background: rgba(0,230,118,0.2); color: var(--accent-green); border: 1.5px solid var(--accent-green); }
+    .step-dot.waypoint    { background: rgba(0,212,255,0.15); color: var(--accent-cyan); border: 1.5px solid var(--accent-cyan); }
+    .step-dot.destination { background: rgba(255,82,82,0.15); color: var(--accent-red); border: 1.5px solid var(--accent-red); }
+
+    .step-info { flex: 1; min-width: 0; }
+    .step-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .step-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .step-kms  { font-size: 12px; color: var(--accent-amber); font-family: monospace; flex-shrink: 0; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: var(--bg-raised); }
+    th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .td-muted { color: var(--text-secondary); }
+    .td-mono  { font-family: 'SF Mono', 'Fira Code', monospace; }
+    .text-amber  { color: var(--accent-amber); }
+    .text-cyan   { color: var(--accent-cyan); }
+    .text-purple { color: var(--accent-purple); }
+    .text-muted  { color: var(--text-muted); }
+    .font-mono   { font-family: 'SF Mono', 'Fira Code', monospace; }
+
+    /* ── Pills ── */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+    .pill-cyan   { background: rgba(0,212,255,0.12); color: var(--accent-cyan);   border: 1px solid rgba(0,212,255,0.25); }
+    .pill-green  { background: rgba(0,230,118,0.12); color: var(--accent-green);  border: 1px solid rgba(0,230,118,0.25); }
+    .pill-red    { background: rgba(255,82,82,0.12);  color: var(--accent-red);   border: 1px solid rgba(255,82,82,0.25); }
+    .pill-amber  { background: rgba(255,171,64,0.12); color: var(--accent-amber); border: 1px solid rgba(255,171,64,0.25); }
+
+    /* ── Map ── */
+    .map-container {
+      height: 420px;
+      background: var(--bg-raised);
+      position: relative;
+      overflow: hidden;
+    }
+    .map-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      text-align: center;
+      gap: 12px;
+    }
+    .map-placeholder-icon { font-size: 48px; opacity: 0.3; }
+    #mapIframe { width: 100%; height: 100%; border: none; display: none; }
+
+    /* ── Links ── */
+    .link-btn {
+      color: var(--accent-cyan);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .link-btn:hover { text-decoration: underline; }
+
+    /* ── Snackbar ── */
+    .snackbar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--bg-raised);
+      border: 1px solid var(--border-light);
+      border-radius: 24px;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      box-shadow: var(--shadow-lg);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 9999;
+    }
+    .snackbar.show { transform: translateX(-50%) translateY(0); }
+    .snackbar.success { border-color: rgba(0,230,118,0.4); }
+
+    /* ── Misc ── */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { opacity: 0.5; }
+
+    @media (max-width: 600px) {
+      .page { padding: 12px; gap: 14px; }
+      .config-row { grid-template-columns: 1fr 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .actions-row { flex-direction: column; align-items: stretch; }
+      .btn { justify-content: center; }
+      .header-inner { padding: 10px 16px; }
+    }
+
+    @media print {
+      .header, .btn, .multiselect-wrapper, .actions-row { display: none !important; }
+      .card { break-inside: avoid; }
+    }
+  </style>
 </head>
 <body>
 
@@ -40,7 +551,6 @@
     <div class="card-body">
       <div class="config-row">
 
-        <!-- Trip Cost -->
         <div class="form-group">
           <label class="form-label">Trip Cost (₹)</label>
           <div class="input-with-prefix">
@@ -49,7 +559,6 @@
           </div>
         </div>
 
-        <!-- Trip Revenue (auto-calculated) -->
         <div class="form-group">
           <label class="form-label">Trip Revenue (₹) <span style="color:var(--accent-cyan);font-size:10px;letter-spacing:1px;">= KG × Rate</span></label>
           <div class="input-with-prefix">
@@ -60,25 +569,21 @@
           </div>
         </div>
 
-        <!-- Trip Weight -->
         <div class="form-group">
           <label class="form-label">Trip Weight (KG)</label>
           <input class="form-input" type="number" id="tripWeight" value="500" min="0" step="10" oninput="recalculate()" />
         </div>
 
-        <!-- RT Threshold -->
         <div class="form-group">
           <label class="form-label">RT Eligibility Threshold (KM)</label>
           <input class="form-input" type="number" id="rtThreshold" value="50" min="0" step="5" oninput="recalculate()" />
         </div>
 
-        <!-- Margin Rate -->
         <div class="form-group">
           <label class="form-label">Margin Rate (per KG)</label>
           <input class="form-input" type="number" id="marginRate" value="3.9" min="0" step="0.1" oninput="recalculate()" />
         </div>
 
-        <!-- Max Round Trip KM -->
         <div class="form-group">
           <label class="form-label">Max Round Trip KM</label>
           <input class="form-input" type="number" id="maxRTKm" value="150" min="0" step="10" oninput="recalculate()" />
@@ -98,7 +603,6 @@
     </div>
     <div class="card-body">
       <div class="config-row">
-
         <div class="form-group" style="grid-column: 1 / -1; max-width: 560px;">
           <label class="form-label">Choose Customers (Multi-Select)</label>
           <div class="multiselect-wrapper" id="multiselectWrapper">
@@ -115,28 +619,19 @@
                 <button class="dropdown-action-btn" onclick="clearAll()">Clear All</button>
                 <button class="dropdown-action-btn" onclick="selectEligible()">Select Eligible Only</button>
               </div>
-              <div class="dropdown-list" id="dropdownList">
-                <!-- items injected by JS -->
-              </div>
+              <div class="dropdown-list" id="dropdownList"></div>
             </div>
           </div>
           <div class="selected-tags" id="selectedTags"></div>
         </div>
-
       </div>
 
       <div class="divider mt-16"></div>
 
       <div class="actions-row mt-8">
-        <button class="btn btn-primary" onclick="analyzeTrip()">
-          🗺 Analyze Round Trip
-        </button>
-        <button class="btn btn-secondary" onclick="optimizeRoute()">
-          ⚡ Optimize Route
-        </button>
-        <button class="btn btn-ghost btn-sm" onclick="openGoogleMapsAll()">
-          🔗 Open All in Maps
-        </button>
+        <button class="btn btn-primary" onclick="analyzeTrip()">🗺 Analyze Round Trip</button>
+        <button class="btn btn-secondary" onclick="optimizeRoute()">⚡ Optimize Route</button>
+        <button class="btn btn-ghost btn-sm" onclick="openGoogleMapsAll()">🔗 Open All in Maps</button>
       </div>
     </div>
   </div>
@@ -198,16 +693,13 @@
   </div>
 
   <!-- ── Section 4: Eligibility Result + Route ── -->
-  <div id="resultSection">
-    <!-- filled dynamically -->
-  </div>
+  <div id="resultSection"></div>
 
   <!-- ── Section 5: Map ── -->
   <div class="card" id="mapCard">
     <div class="card-header">
       <div class="card-title"><span class="text-cyan">🗺</span> Route Map</div>
       <div style="display:flex; gap:8px;">
-        <button class="btn btn-ghost btn-sm" id="mapToggle" onclick="toggleMapMode()">Switch to Street View</button>
         <button class="btn btn-ghost btn-sm" onclick="openInGoogleMaps()">Open Full Map ↗</button>
       </div>
     </div>
@@ -215,9 +707,9 @@
       <div class="map-container">
         <div class="map-placeholder" id="mapPlaceholder">
           <div class="map-placeholder-icon">🗺</div>
-          <p>Select customers and click<br/><strong style="color:var(--accent-cyan);">Analyze Round Trip</strong><br/>to view the optimized route</p>
+          <p>Select customers and click<br/><strong style="color:var(--accent-cyan);">Analyze Round Trip</strong><br/>to view the route in Google Maps</p>
         </div>
-        <iframe id="mapIframe" style="display:none;" allowfullscreen loading="lazy"
+        <iframe id="mapIframe" style="display:none; width:100%; height:100%; border:none;" allowfullscreen loading="lazy"
           referrerpolicy="no-referrer-when-downgrade">
         </iframe>
       </div>
@@ -266,9 +758,9 @@
 
 <!-- ═══════════════════════════ SCRIPT ═══════════════════════════ -->
 <script>
-// ════════════════════════════════════════════════════
-//  CUSTOMER DATA  (from Excel master file)
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
+//  CUSTOMER DATA
+// ══════════════════════════════════════════
 const CUSTOMERS = [
   { id:  1, name: "APTIV COMPONENTS",                          city: "Vallam",            pincode: "602105", mode: "LTL", km: 17.4, link: "https://maps.app.goo.gl/Uxuqgf8Z4Mi87dEK8", lat: 12.9830, lng: 79.9867 },
   { id:  2, name: "APTIV COMPONENTS INDIA PRIVATE",            city: "Walajabad",         pincode: "631605", mode: "LTL", km: 34.8, link: "https://maps.app.goo.gl/q2eXpjNjHG65W9ra9", lat: 12.8437, lng: 79.9310 },
@@ -297,18 +789,16 @@ const CUSTOMERS = [
   { id: 25, name: "YAZAKI INDIA (Kodithandalam/Walajabad)",    city: "Kodithandalam",     pincode: "631604", mode: "LTL", km: 63.2, link: "https://maps.app.goo.gl/Y5JPAY4Wm2cDBJ8EA", lat: 12.8530, lng: 79.9680 },
 ];
 
-// Origin depot (Chennai)
 const ORIGIN = { name: "Chennai Depot (Origin)", lat: 13.0827, lng: 80.2707 };
 
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 //  STATE
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 let selectedIds  = new Set();
-let lastAnalysis = null;
 
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 //  INIT
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   renderDropdownItems(CUSTOMERS);
   renderMasterTable();
@@ -316,9 +806,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', closeDropdownOnOutsideClick);
 });
 
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 //  DROPDOWN
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function toggleDropdown() {
   const dropdown = document.getElementById('multiselectDropdown');
   const trigger  = document.getElementById('multiselectTrigger');
@@ -349,16 +839,17 @@ function handleTriggerKey(e) {
 }
 
 function renderDropdownItems(list) {
+  const maxRT    = parseFloat(document.getElementById('maxRTKm').value || 150);
   const container = document.getElementById('dropdownList');
   container.innerHTML = list.map(c => {
-    const rtKm = c.km != null ? (c.km * 2).toFixed(1) : 'N/A';
-    const eligFmt = c.km != null ? (c.km * 2 <= parseFloat(document.getElementById('maxRTKm').value || 150) ? '✓ Eligible' : '✗ Over limit') : 'No KM data';
+    const rtKm   = c.km != null ? (c.km * 2).toFixed(1) : 'N/A';
+    const elig   = c.km != null ? (c.km * 2 <= maxRT ? '✓ Eligible' : '✗ Over limit') : 'No KM data';
     return `
     <div class="dropdown-item ${selectedIds.has(c.id) ? 'selected' : ''}" onclick="toggleCustomer(${c.id})" id="ditem-${c.id}">
-      <div class="dropdown-checkbox"></div>
+      <div class="dropdown-checkbox">${selectedIds.has(c.id) ? '<span style="display:block;color:#000;font-size:10px;font-weight:700;text-align:center;line-height:16px;">✓</span>' : ''}</div>
       <div class="dropdown-item-info">
         <div class="dropdown-item-name">${c.name}</div>
-        <div class="dropdown-item-meta">${c.city} · ${c.pincode} · ${eligFmt}</div>
+        <div class="dropdown-item-meta">${c.city} · ${c.pincode} · ${elig}</div>
       </div>
       <div class="dropdown-item-kms">${c.km != null ? c.km + ' km' : '—'}</div>
     </div>`;
@@ -368,7 +859,11 @@ function renderDropdownItems(list) {
 
 function filterDropdown() {
   const q = document.getElementById('dropdownSearch').value.toLowerCase();
-  const filtered = CUSTOMERS.filter(c => c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q) || c.pincode.includes(q));
+  const filtered = CUSTOMERS.filter(c =>
+    c.name.toLowerCase().includes(q) ||
+    c.city.toLowerCase().includes(q) ||
+    c.pincode.includes(q)
+  );
   renderDropdownItems(filtered);
 }
 
@@ -384,23 +879,30 @@ function toggleCustomer(id) {
 function syncDropdownUI() {
   CUSTOMERS.forEach(c => {
     const el = document.getElementById(`ditem-${c.id}`);
-    if (el) el.classList.toggle('selected', selectedIds.has(c.id));
+    if (!el) return;
+    const isSel = selectedIds.has(c.id);
+    el.classList.toggle('selected', isSel);
+    const cb = el.querySelector('.dropdown-checkbox');
+    if (cb) cb.innerHTML = isSel ? '<span style="display:block;color:#000;font-size:10px;font-weight:700;text-align:center;line-height:16px;">✓</span>' : '';
   });
+
   const triggerText = document.getElementById('triggerText');
   if (selectedIds.size === 0) {
     triggerText.textContent = 'Search and select customers…';
     triggerText.classList.remove('has-selection');
   } else {
     const names = CUSTOMERS.filter(c => selectedIds.has(c.id)).map(c => c.name);
-    triggerText.textContent = names.length <= 2 ? names.join(', ') : `${names.slice(0,2).join(', ')} +${names.length - 2} more`;
+    triggerText.textContent = names.length <= 2
+      ? names.join(', ')
+      : `${names.slice(0, 2).join(', ')} +${names.length - 2} more`;
     triggerText.classList.add('has-selection');
   }
 }
 
 function renderSelectedTags() {
-  const wrap = document.getElementById('selectedTags');
+  const wrap     = document.getElementById('selectedTags');
   const selected = CUSTOMERS.filter(c => selectedIds.has(c.id));
-  wrap.innerHTML = selected.map(c => `
+  wrap.innerHTML  = selected.map(c => `
     <span class="selected-tag">
       ${c.name.split(' ').slice(0,3).join(' ')}
       <span class="tag-remove" onclick="toggleCustomer(${c.id})">×</span>
@@ -429,23 +931,21 @@ function selectEligible() {
   syncDropdownUI(); renderSelectedTags(); updateSelectionCount(); recalculate();
 }
 
-// Add from table row
 function addToTripFromTable(id) {
   selectedIds.add(id);
   syncDropdownUI(); renderSelectedTags(); updateSelectionCount(); recalculate();
-  showSnackbar('✓', `Customer added to trip`, 'success');
+  showSnackbar('✓', 'Customer added to trip', 'success');
 }
 
-// ════════════════════════════════════════════════════
-//  RECALCULATE KPIs
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
+//  KPI RECALCULATE
+// ══════════════════════════════════════════
 function recalculate() {
   const tripCost   = parseFloat(document.getElementById('tripCost').value)   || 0;
   const tripWeight = parseFloat(document.getElementById('tripWeight').value) || 0;
   const marginRate = parseFloat(document.getElementById('marginRate').value) || 3.9;
   const maxRT      = parseFloat(document.getElementById('maxRTKm').value)    || 150;
 
-  // Revenue = weight x rate (auto-calculated)
   const tripRevenue = tripWeight * marginRate;
   document.getElementById('tripRevenue').value = tripRevenue.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
@@ -455,22 +955,22 @@ function recalculate() {
   const costPerKm     = totalKm > 0 ? tripCost / totalKm : 0;
   const eligibleCount = CUSTOMERS.filter(c => c.km != null && c.km * 2 <= maxRT).length;
 
-  set('statTotalKm',    totalKm > 0 ? totalKm.toFixed(1) + ' km' : '—');
-  set('statTripCost',   '₹' + fmt(tripCost));
-  set('statTripRevenue','₹' + fmt(tripRevenue));
-  set('statMargin',     '₹' + fmt(tripRevenue));
-  set('statProfit',     (profit >= 0 ? '₹' : '-₹') + fmt(Math.abs(profit)));
-  set('statEligible',   eligibleCount);
-  set('statSelected',   selectedIds.size);
-  set('statCostPerKm',  totalKm > 0 ? '₹' + costPerKm.toFixed(1) + '/km' : '—');
+  setEl('statTotalKm',    totalKm > 0 ? totalKm.toFixed(1) + ' km' : '—');
+  setEl('statTripCost',   '₹' + fmt(tripCost));
+  setEl('statTripRevenue','₹' + fmt(tripRevenue));
+  setEl('statMargin',     '₹' + fmt(tripRevenue));
+  setEl('statProfit',     (profit >= 0 ? '₹' : '-₹') + fmt(Math.abs(profit)));
+  setEl('statEligible',   eligibleCount);
+  setEl('statSelected',   selectedIds.size);
+  setEl('statCostPerKm',  totalKm > 0 ? '₹' + costPerKm.toFixed(1) + '/km' : '—');
 
   const profitEl = document.getElementById('statProfit');
-  profitEl.className = 'stat-value ' + (profit >= 0 ? 'green' : 'red');
+  if (profitEl) profitEl.className = 'stat-value ' + (profit >= 0 ? 'green' : 'red');
 
   renderMasterTable();
 }
 
-function set(id, val) {
+function setEl(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = val;
 }
@@ -479,17 +979,22 @@ function fmt(n) {
   return Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
 }
 
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 //  MASTER TABLE
-// ════════════════════════════════════════════════════
-function renderMasterTable(filter = '') {
-  const maxRT      = parseFloat(document.getElementById('maxRTKm').value) || 150;
+// ══════════════════════════════════════════
+function renderMasterTable(filter) {
+  const maxRT      = parseFloat(document.getElementById('maxRTKm').value)    || 150;
   const marginRate = parseFloat(document.getElementById('marginRate').value) || 3.9;
   const tripWeight = parseFloat(document.getElementById('tripWeight').value) || 0;
-  const tbody = document.getElementById('masterTableBody');
-  const q     = filter.toLowerCase();
+  const tbody      = document.getElementById('masterTableBody');
+  const q          = (filter || '').toLowerCase();
 
-  const list = q ? CUSTOMERS.filter(c => c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q) || c.pincode.includes(q)) : CUSTOMERS;
+  const list = q
+    ? CUSTOMERS.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        c.city.toLowerCase().includes(q) ||
+        c.pincode.includes(q))
+    : CUSTOMERS;
 
   tbody.innerHTML = list.map(c => {
     const rtKm     = c.km != null ? (c.km * 2).toFixed(1) : null;
@@ -521,28 +1026,27 @@ function renderMasterTable(filter = '') {
   }).join('');
 }
 
-function filterTable(q) {
-  renderMasterTable(q);
-}
+function filterTable(q) { renderMasterTable(q); }
 
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 //  ANALYZE TRIP
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function analyzeTrip() {
-  if (selectedIds.size === 0) { showSnackbar('⚠', 'Select at least one customer first', ''); return; }
+  if (selectedIds.size === 0) {
+    showSnackbar('⚠', 'Select at least one customer first', '');
+    return;
+  }
 
-  const maxRT    = parseFloat(document.getElementById('maxRTKm').value) || 150;
-  const selected = CUSTOMERS.filter(c => selectedIds.has(c.id));
-  const totalKm  = selected.reduce((s, c) => s + (c.km != null ? c.km * 2 : 0), 0);
-  const eligible = selected.every(c => c.km == null || c.km * 2 <= maxRT);
+  const maxRT         = parseFloat(document.getElementById('maxRTKm').value) || 150;
+  const selected      = CUSTOMERS.filter(c => selectedIds.has(c.id));
+  const totalKm       = selected.reduce((s, c) => s + (c.km != null ? c.km * 2 : 0), 0);
   const noKmCustomers = selected.filter(c => c.km == null);
   const overLimit     = selected.filter(c => c.km != null && c.km * 2 > maxRT);
+  const eligible      = overLimit.length === 0 && noKmCustomers.length === 0;
 
-  // Eligibility banner
-  const resultSection = document.getElementById('resultSection');
   let bannerClass, bannerIcon, bannerTitle, bannerMsg, badgeClass, badgeText;
 
-  if (eligible && noKmCustomers.length === 0) {
+  if (eligible) {
     bannerClass = 'eligible'; bannerIcon = '✅';
     bannerTitle = 'ROUND TRIP ELIGIBLE';
     bannerMsg   = `All ${selected.length} selected customers are within the ${maxRT} km round trip limit. Total distance: ${totalKm.toFixed(1)} km.`;
@@ -559,11 +1063,14 @@ function analyzeTrip() {
     badgeClass  = 'badge-pending'; badgeText = 'INCOMPLETE DATA';
   }
 
-  // Route steps
   const routeSteps = [
-    `<div class="route-step"><div class="step-dot origin">🏁</div><div class="step-info"><div class="step-name">Chennai Depot (Origin)</div><div class="step-meta">Starting point</div></div><div class="step-kms">0 km</div></div>`
+    `<div class="route-step">
+      <div class="step-dot origin">🏁</div>
+      <div class="step-info"><div class="step-name">Chennai Depot (Origin)</div><div class="step-meta">Starting point</div></div>
+      <div class="step-kms">0 km</div>
+    </div>`
   ].concat(selected.map((c, i) => {
-    const rtKm = c.km != null ? (c.km * 2).toFixed(1) + ' km RT' : 'No KM data';
+    const rtKm     = c.km != null ? (c.km * 2).toFixed(1) + ' km RT' : 'No KM data';
     const dotClass = c.km == null ? 'waypoint' : (c.km * 2 <= maxRT ? 'waypoint' : 'destination');
     return `<div class="route-step">
       <div class="step-dot ${dotClass}">${i+1}</div>
@@ -574,10 +1081,14 @@ function analyzeTrip() {
       <div class="step-kms">${rtKm}</div>
     </div>`;
   })).concat([
-    `<div class="route-step"><div class="step-dot destination">🏁</div><div class="step-info"><div class="step-name">Return to Chennai Depot</div><div class="step-meta">End of round trip</div></div><div class="step-kms">${totalKm.toFixed(1)} km total</div></div>`
+    `<div class="route-step">
+      <div class="step-dot origin">🏁</div>
+      <div class="step-info"><div class="step-name">Return to Chennai Depot</div><div class="step-meta">End of round trip</div></div>
+      <div class="step-kms">${totalKm.toFixed(1)} km total</div>
+    </div>`
   ]);
 
-  resultSection.innerHTML = `
+  document.getElementById('resultSection').innerHTML = `
     <div class="card">
       <div class="card-header">
         <div class="card-title"><span class="text-cyan">📊</span> Round Trip Analysis</div>
@@ -591,7 +1102,6 @@ function analyzeTrip() {
           </div>
           <span class="eligibility-badge ${badgeClass}">${badgeText}</span>
         </div>
-
         <div class="two-col">
           <div>
             <div class="section-label">Optimized Route Order</div>
@@ -601,14 +1111,7 @@ function analyzeTrip() {
             <div class="section-label">Per-Customer Breakdown</div>
             <div class="table-wrap">
               <table>
-                <thead>
-                  <tr>
-                    <th>Customer</th>
-                    <th>One-Way</th>
-                    <th>Round Trip</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
+                <thead><tr><th>Customer</th><th>One-Way</th><th>Round Trip</th><th>Status</th></tr></thead>
                 <tbody>
                   ${selected.map(c => {
                     const rtKm = c.km != null ? (c.km * 2).toFixed(1) : null;
@@ -640,27 +1143,26 @@ function analyzeTrip() {
       </div>
     </div>`;
 
-  // Load map
   loadRouteMap(selected);
   showSnackbar('✅', 'Analysis complete!', 'success');
 }
 
-// ════════════════════════════════════════════════════
-//  ROUTE OPTIMIZATION (nearest-neighbour heuristic)
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
+//  ROUTE OPTIMIZATION (nearest-neighbour)
+// ══════════════════════════════════════════
 function optimizeRoute() {
   if (selectedIds.size === 0) { showSnackbar('⚠', 'Select customers first', ''); return; }
-  const selected = CUSTOMERS.filter(c => selectedIds.has(c.id));
+
+  const selected  = CUSTOMERS.filter(c => selectedIds.has(c.id));
   const hasCoords = selected.filter(c => c.lat && c.lng);
   if (hasCoords.length < 2) { analyzeTrip(); return; }
 
-  // Nearest neighbour from origin
-  let current = { lat: ORIGIN.lat, lng: ORIGIN.lng };
+  let current   = { lat: ORIGIN.lat, lng: ORIGIN.lng };
   let remaining = [...hasCoords];
   const ordered = [];
 
   while (remaining.length > 0) {
-    let nearestIdx = 0;
+    let nearestIdx  = 0;
     let nearestDist = haversine(current, remaining[0]);
     for (let i = 1; i < remaining.length; i++) {
       const d = haversine(current, remaining[i]);
@@ -671,91 +1173,77 @@ function optimizeRoute() {
     remaining.splice(nearestIdx, 1);
   }
 
-  // Re-order selectedIds to match optimized route
   selectedIds.clear();
   ordered.forEach(c => selectedIds.add(c.id));
   syncDropdownUI(); renderSelectedTags(); updateSelectionCount();
   analyzeTrip();
-  showSnackbar('⚡', 'Route optimized using nearest-neighbour!', 'success');
+  showSnackbar('⚡', 'Route optimized (nearest-neighbour)!', 'success');
 }
 
 function haversine(a, b) {
   const R = 6371, toRad = x => x * Math.PI / 180;
   const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
-  const aa = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa));
+  const aa = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
 }
 
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 //  MAP
-// ════════════════════════════════════════════════════
-let streetViewMode = false;
-
+// ══════════════════════════════════════════
 function loadRouteMap(selected) {
-  const iframe   = document.getElementById('mapIframe');
+  const iframe      = document.getElementById('mapIframe');
   const placeholder = document.getElementById('mapPlaceholder');
-  const withLink = selected.filter(c => c.link);
+  const withCoords  = selected.filter(c => c.lat && c.lng);
 
   placeholder.style.display = 'none';
   iframe.style.display      = 'block';
 
-  // Build Google Maps embed with waypoints
-  const withCoords = selected.filter(c => c.lat && c.lng);
   if (withCoords.length === 0) {
-    iframe.src = `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d248849.88584551975!2d80.2707!3d13.0827!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sin!4v1234567890`;
+    // Fallback: show Chennai on the map
+    iframe.src = `https://maps.google.com/maps?q=${ORIGIN.lat},${ORIGIN.lng}&z=11&output=embed`;
     return;
   }
 
-  const origin      = `${ORIGIN.lat},${ORIGIN.lng}`;
-  const destination = `${ORIGIN.lat},${ORIGIN.lng}`;
-  const waypoints   = withCoords.map(c => `${c.lat},${c.lng}`).join('|');
-
-  const mapsUrl = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyD-placeholder&origin=${origin}&destination=${destination}&waypoints=${waypoints}&mode=driving`;
-
-  // Fallback to simple view map showing all markers
-  const center = withCoords[0];
-  const markers = withCoords.map(c => `markers=color:red%7C${c.lat},${c.lng}`).join('&');
-  const fallbackUrl = `https://maps.google.com/maps?q=${center.lat},${center.lng}&z=10&output=embed`;
-
-  // Use Google Maps embed with location search for origin + all destinations
-  const allLocs = withCoords.map(c => encodeURIComponent(`${c.lat},${c.lng}`)).join('/');
-  const gmDirectionsEmbed = buildGmapsEmbed(withCoords);
-  iframe.src = gmDirectionsEmbed;
-}
-
-function buildGmapsEmbed(customers) {
-  // Build a map that shows all locations
-  if (customers.length === 1) {
-    return `https://maps.google.com/maps?q=${customers[0].lat},${customers[0].lng}&z=14&output=embed`;
+  if (withCoords.length === 1) {
+    iframe.src = `https://maps.google.com/maps?q=${withCoords[0].lat},${withCoords[0].lng}&z=13&output=embed`;
+    return;
   }
-  const centerLat = customers.reduce((s, c) => s + c.lat, 0) / customers.length;
-  const centerLng = customers.reduce((s, c) => s + c.lng, 0) / customers.length;
-  const q = customers.map(c => `${c.lat},${c.lng}`).join('%20to%20');
-  return `https://maps.google.com/maps?saddr=${ORIGIN.lat},${ORIGIN.lng}&daddr=${customers.map(c => `${c.lat},${c.lng}`).join('+to:')}&output=embed`;
-}
 
-function toggleMapMode() {
-  streetViewMode = !streetViewMode;
-  document.getElementById('mapToggle').textContent = streetViewMode ? 'Switch to Map View' : 'Switch to Street View';
+  // Build a directions URL for multi-stop; Google Maps embed supports saddr + daddr with "to:" chaining
+  const stops = [
+    `${ORIGIN.lat},${ORIGIN.lng}`,
+    ...withCoords.map(c => `${c.lat},${c.lng}`),
+    `${ORIGIN.lat},${ORIGIN.lng}`
+  ];
+
+  const saddr = stops[0];
+  const daddr = stops.slice(1).join('+to:');
+  iframe.src  = `https://maps.google.com/maps?saddr=${saddr}&daddr=${daddr}&output=embed`;
 }
 
 function openInGoogleMaps() {
   const selected = CUSTOMERS.filter(c => selectedIds.has(c.id) && c.lat && c.lng);
-  if (selected.length === 0) { showSnackbar('⚠', 'No customers with coordinates selected', ''); return; }
-  const url = `https://www.google.com/maps/dir/${ORIGIN.lat},${ORIGIN.lng}/${selected.map(c=>`${c.lat},${c.lng}`).join('/')}/${ORIGIN.lat},${ORIGIN.lng}`;
+  if (selected.length === 0) {
+    showSnackbar('⚠', 'No customers with coordinates selected', '');
+    return;
+  }
+  const url = `https://www.google.com/maps/dir/${ORIGIN.lat},${ORIGIN.lng}/${selected.map(c => `${c.lat},${c.lng}`).join('/')}/${ORIGIN.lat},${ORIGIN.lng}`;
   window.open(url, '_blank');
 }
 
 function openGoogleMapsAll() {
   const links = CUSTOMERS.filter(c => selectedIds.has(c.id) && c.link);
-  if (links.length === 0) { showSnackbar('⚠', 'No map links available for selected customers', ''); return; }
-  links.slice(0,5).forEach(c => window.open(c.link, '_blank'));
+  if (links.length === 0) {
+    showSnackbar('⚠', 'No map links available for selected customers', '');
+    return;
+  }
+  links.slice(0, 5).forEach(c => window.open(c.link, '_blank'));
   if (links.length > 5) showSnackbar('ℹ', `Opened first 5 of ${links.length} maps`, '');
 }
 
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 //  HELPERS
-// ════════════════════════════════════════════════════
+// ══════════════════════════════════════════
 function resetAll() {
   selectedIds.clear();
   syncDropdownUI(); renderSelectedTags(); updateSelectionCount();
@@ -770,15 +1258,12 @@ function showSnackbar(icon, msg, type) {
   const sb = document.getElementById('snackbar');
   document.getElementById('snackbarIcon').textContent = icon;
   document.getElementById('snackbarMsg').textContent  = msg;
-  sb.className = `snackbar show ${type}`;
+  sb.className = `snackbar show${type ? ' ' + type : ''}`;
   clearTimeout(sb._timer);
   sb._timer = setTimeout(() => sb.classList.remove('show'), 3000);
 }
 
-function printReport() {
-  window.print();
-}
+function printReport() { window.print(); }
 </script>
-
 </body>
 </html>
